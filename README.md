@@ -161,6 +161,11 @@ Claude Code 2.1.237.
 - Since v2.1.198, subagents inherit the session model. `Explore` and
   `general-purpose` are no longer free Haiku. Set
   `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` (or `haiku`) if you assumed otherwise.
+- **Nothing here helps across sessions.** The kit measures one conversation; it
+  has no memory of the last one. What covers that gap is a file-based memory,
+  one fact per markdown file plus a small index loaded every session, so the
+  model starts informed instead of being taught the same things again. Different
+  problem, separate repo, coming shortly.
 
 ## Prior art and sources
 
