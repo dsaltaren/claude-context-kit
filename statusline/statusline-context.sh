@@ -45,9 +45,15 @@ def dig(*path, default=0):
 
 parts = []
 
-# The working directory is deliberately not shown: it is a fixed-width string
-# that pushes the things that actually change (context, quota, account) off the
-# right edge. You already know which directory you opened.
+# The directory is shown, but truncated. Its job is not telling you where you
+# are (you know that), it is telling you which of your open sessions this one
+# is. The first few characters do that; the full name just costs width.
+cwd = d.get("cwd") or dig("workspace", "current_dir", default="")
+if cwd:
+    base = os.path.basename(str(cwd).rstrip("/"))
+    if len(base) > 12:
+        base = base[:11] + "~"
+    parts.append(DIM + base + RESET)
 
 model = dig("model", "display_name", default="")
 if model:
