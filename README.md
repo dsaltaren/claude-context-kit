@@ -11,9 +11,9 @@ happening until the bill does.
 This kit puts it in the status bar and tells you when to act.
 
 ```
-myproject  Opus 5 1M  15% ctx (150K)  alice team  30% wk  ~$18
-myproject  Opus 5 1M  23% ctx (234K) -> /handoff and /compact  alice team  30% wk
-myproject  Opus 5 1M  85% ctx (850K) -> /handoff + /compact NOW  70% wk
+Opus 5 1M  15% ctx (150K)  alice team  30% wk  ~$18
+Opus 5 1M  24% ctx (242K) -> /handoff and /compact  alice team  30% wk  ~$18
+Opus 5 1M  85% ctx (850K) -> /handoff + /compact NOW  70% wk  ~$18
 ```
 
 It warns at 55% of the window, and separately at **200K tokens whatever the

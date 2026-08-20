@@ -45,9 +45,9 @@ def dig(*path, default=0):
 
 parts = []
 
-cwd = d.get("cwd") or dig("workspace", "current_dir", default="")
-if cwd:
-    parts.append(DIM + os.path.basename(str(cwd).rstrip("/")) + RESET)
+# The working directory is deliberately not shown: it is a fixed-width string
+# that pushes the things that actually change (context, quota, account) off the
+# right edge. You already know which directory you opened.
 
 model = dig("model", "display_name", default="")
 if model:
