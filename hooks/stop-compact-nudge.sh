@@ -24,10 +24,10 @@ import sys, json, os, re
 # Se avisa por % de contexto real (leido del transcript), no por numero de
 # llamadas: una llamada puede pesar 900 B o 700 KB. Las llamadas quedan solo
 # como respaldo si el transcript no se puede leer.
-PCT_FIRST = 55    # primer aviso, en % de la ventana de contexto
-PCT_STEP  = 15    # y luego cada 15 puntos
-FIRST = 300   # respaldo: primer aviso por llamadas
-STEP  = 200   # respaldo: y luego cada 200 llamadas
+PCT_FIRST = 55    # first warning, as % of the context window
+PCT_STEP  = 15    # then every 15 points
+FIRST = 300   # fallback: first warning by call count
+STEP  = 200   # fallback: then every 200 calls
 
 try:
     d = json.load(sys.stdin)
@@ -53,6 +53,7 @@ except Exception:
 # Peso real: la ultima linea del transcript con uso de tokens dice cuanto de la
 # ventana esta ocupado ahora mismo. Es el dato honesto; las llamadas son proxy.
 pct = None
+tokens = 0
 try:
     tp = str(d.get("transcript_path") or "")
     if tp and os.path.exists(tp):
@@ -72,6 +73,7 @@ try:
                    + int(u.get("cache_read_input_tokens", 0) or 0)
                    + int(u.get("cache_creation_input_tokens", 0) or 0))
             if tot > 0:
+                tokens = tot
                 # Ventana de 1M en este perfil; si cambia, el respaldo por
                 # llamadas sigue cubriendo el caso.
                 pct = min(100, int(tot * 100 / 1000000))
@@ -79,11 +81,19 @@ try:
 except Exception:
     pct = None
 
+# Umbral absoluto: 200K tokens es donde una sesion deja de ser normal, sea cual
+# sea la ventana. En una de 1M eso es solo el 21%, asi que esperar al 55% dejaria
+# pasar sesiones enormes sin decir nada.
+TOK_FIRST = 200000
+pct_real = pct
+if tokens and tokens >= TOK_FIRST and (pct is None or pct < PCT_FIRST):
+    pct = max(pct or 0, PCT_FIRST)   # entra por el mismo camino de avisos
+
 if pct is not None:
     if pct < PCT_FIRST:
         sys.exit(0)
     tier = PCT_FIRST + ((pct - PCT_FIRST) // PCT_STEP) * PCT_STEP
-    tier = 10000 + tier   # espacio propio, no colisiona con el de llamadas
+    tier = 10000 + tier   # own range, cannot collide with the call-count tiers
 else:
     if calls < FIRST:
         sys.exit(0)
@@ -111,20 +121,26 @@ except Exception:
 #
 # "ok": false NO bloquea nada aqui: solo hace que el reason se pinte.
 
-medida = ("%d%% de la ventana de contexto" % pct) if pct is not None else (
-         "%d llamadas" % calls)
-reason = ("Contexto: %s en esta sesion (%d capturas). "
-          "Buen momento para /handoff y luego /compact." % (medida, shots))
+if tokens:
+    medida = "%dK tokens of context" % (tokens // 1000)
+    if pct_real is not None:
+        medida += " (%d%% of the window)" % pct_real
+elif pct_real is not None:
+    medida = "%d%% of the context window" % pct_real
+else:
+    medida = "%d tool calls" % calls
+reason = ("Context: %s in this session (%d screenshots). "
+          "Good moment for /handoff and then /compact." % (medida, shots))
 
 msg = (
-    "AVISO DE CONTEXTO, dirigido a ti (Claude), no a Danny: esta sesion ocupa ya "
-    "%s (%d capturas). El contexto se reenvia entero en cada llamada, asi que el "
-    "coste crece rapido. "
-    "Antes de seguir, dile a Danny en una linea que conviene ejecutar /handoff "
-    "(volcar decisiones y trampas a disco) y despues /compact. Ese orden importa: "
-    "compactar primero borra justo lo que habia que volcar. "
-    "Espera su decision, no compactes tu. "
-    "Si ya se lo has dicho en este mismo turno, no lo repitas."
+    "CONTEXT WARNING, addressed to you (the assistant), not to the user: this "
+    "session now holds %s (%d screenshots). The whole context is resent on every "
+    "call, so cost is already growing fast. "
+    "Before doing anything else, tell the user in one line that it is a good "
+    "moment to run /handoff (dump decisions and dead ends to disk) and then "
+    "/compact. That order matters: compacting first destroys what needed writing "
+    "down. Wait for their decision, do not compact yourself. "
+    "If you already said this in this same turn, do not repeat it."
 ) % (medida, shots)
 
 # NO se usa "ok": false. En un hook Stop eso pide continuar el turno, que es

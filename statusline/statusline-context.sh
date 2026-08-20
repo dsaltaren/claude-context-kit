@@ -57,21 +57,31 @@ if model:
 used = dig("context_window", "used_percentage", default=None)
 if isinstance(used, (int, float)):
     used = int(used)
-    col = RED if used >= 75 else YELL if used >= 50 else GREEN
+    # En una ventana de 1M el porcentaje engana: 22% son ya 215K tokens, mas de
+    # lo que cabria entero en una ventana estandar. Se muestran los tokens
+    # absolutos junto al %, y el aviso salta al pasar de 200K, que es donde una
+    # sesion deja de ser normal sea cual sea el tamano de la ventana.
+    tok = dig("context_window", "total_input_tokens", default=0)
+    tok = int(tok) if isinstance(tok, (int, float)) else 0
+    grande = bool(dig("context_window", "exceeds_200k_tokens", default=False)) or tok > 200000
+
+    col = RED if used >= 75 else YELL if (used >= 50 or grande) else GREEN
     txt = "%d%% ctx" % used
+    if tok >= 100000:
+        txt += " (%dK)" % (tok // 1000)
     # Mismo consejo que el hook Stop, para que las dos senales no se contradigan:
     # handoff primero, compact despues. Compactar antes borra lo que ibas a volcar.
     if used >= 75:
         txt += " -> /handoff + /compact NOW"
     elif used >= 50:
         txt += " -> /handoff and /compact"
+    elif grande:
+        txt += " -> over 200K, time to /handoff and /compact"
     parts.append(col + txt + RESET)
 
 # Quien paga esto. Se lee del .claude.json de la config activa (CLAUDE_CONFIG_DIR
 # o ~/.claude): con suscripcion plana el $ es un precio sombra, no gasto real.
-# Default to flat-plan semantics: most users are on a subscription, and showing
-# a shadow price as if it were a bill is the more harmful mistake of the two.
-cuenta, plano, dudoso = "", True, False
+cuenta, plano, dudoso = "", False, False
 try:
     cfgdir = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
     # Para la config por defecto la credencial viva es ~/.claude.json (fuera del
@@ -99,8 +109,6 @@ try:
                     dudoso = True
         except Exception:
             pass
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        plano = False   # explicit API key: the dollar figure is a real charge
     for c in cand:
         with open(c) as f:
             acc = (json.load(f).get("oauthAccount") or {})

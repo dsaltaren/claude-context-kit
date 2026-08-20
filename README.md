@@ -11,14 +11,20 @@ happening until the bill does.
 This kit puts it in the status bar and tells you when to act.
 
 ```
-myproject  Opus 5  22% ctx  30% wk  ~$18
-myproject  Opus 5  55% ctx -> /handoff and /compact  30% wk  ~$18
-myproject  Opus 5  85% ctx -> /handoff + /compact NOW  70% wk  38 MB res
+myproject  Opus 5  12% ctx  30% wk  ~$18
+myproject  Opus 5  22% ctx (224K) -> over 200K, time to /handoff and /compact
+myproject  Opus 5  85% ctx (850K) -> /handoff + /compact NOW  70% wk
 ```
 
-At 55% of the context window it suggests writing your notes to disk and
-compacting. At 85% it stops suggesting and starts insisting. It never compacts
-for you: it puts the decision where you will see it.
+It warns at 55% of the window, and separately at **200K tokens whatever the
+window size**. That second threshold matters more than it looks: on a 1M context
+model, 200K tokens is only 20%, a number that reads as "plenty of room" while
+the session is already larger than a standard context window can hold. The token
+count is shown next to the percentage for the same reason, because a percentage
+against a very large denominator hides how big the conversation actually got.
+
+At 85% it stops suggesting and starts insisting. It never compacts for you: it
+puts the decision where you will see it.
 
 It also blocks one specific thing: taking a screenshot of something you have not
 edited since the last one. That image is byte-for-byte identical to one already
@@ -142,8 +148,9 @@ Claude Code 2.1.237.
 
 ## Caveats
 
-- **Statusline thresholds are tuned for a 1M context window.** On a 200K window
-  the percentages still work, but you will want to warn earlier.
+- **Thresholds assume you would rather compact early than late.** The absolute
+  200K trigger fires at 20% of a 1M window, which some people will find noisy.
+  Both thresholds are one edit away at the top of each file.
 - **The guard is Paper-specific** as written.
 - **`context-weight.sh` is partly redundant** now that the native `%` exists. It
   is kept because it is the only piece that reports *which* tool consumed the
