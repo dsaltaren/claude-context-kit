@@ -1,31 +1,49 @@
 # claude-context-kit
 
-Six hooks and a statusline that keep a long Claude Code session from quietly
-getting expensive.
+The expensive thing in a long Claude Code session is not what you ask, it is how
+long you have been asking.
 
-In Claude Code the whole context is resent on every call, so the cost of a
-session grows with the square of its length. A single screenshot is not
-expensive because of the one call that requests it, but because of the four
-hundred calls that resend it afterwards.
+The whole conversation is resent on every single call. A session that runs for
+900 calls pays for everything accumulated so far, 900 times over. The cost grows
+with the square of the length, and nothing in the interface tells you this is
+happening until the bill does.
 
-This kit does three things: it shows the numbers that actually matter, it says
-when to compact, and it blocks the one action that is never worth taking.
+This kit puts it in the status bar and tells you when to act.
+
+```
+myproject  Opus 5  22% ctx  30% wk  ~$18
+myproject  Opus 5  55% ctx -> /handoff and /compact  30% wk  ~$18
+myproject  Opus 5  85% ctx -> /handoff + /compact NOW  70% wk  38 MB res
+```
+
+At 55% of the context window it suggests writing your notes to disk and
+compacting. At 85% it stops suggesting and starts insisting. It never compacts
+for you: it puts the decision where you will see it.
+
+It also blocks one specific thing: taking a screenshot of something you have not
+edited since the last one. That image is byte-for-byte identical to one already
+in the context, and it will be resent on every call for the rest of the session.
 
 ## Why it exists
 
-Measured on one real design session before any of this was in place:
+Measured on one real session before any of this was in place:
 
 | | |
 |---|---|
-| Tool calls | 973 |
-| Screenshots | 157 |
-| **Screenshots of an unchanged node** | **87 (55%)** |
-| Worst single node | captured 20 times |
+| **Tool calls in a single conversation** | **973** |
 | Transcript on disk | 51 MB |
+| Screenshots | 157 |
+| Screenshots of a node that had not changed | 87 (55%) |
+| Worst single node | captured 20 times |
 
-Those 87 repeats returned an image identical to one already in the context. The
-rules against it were written down and were being read. They did not survive
-contact with a task in progress.
+The length is the headline. The screenshots are what made the slope steeper:
+each one leaves roughly 112 KB in the context permanently, so a session heavy on
+images gets there faster. A long session with no images at all still gets there.
+
+The rules against all of this were already written down, in the config file that
+gets loaded every session. They were being read. They did not survive contact
+with a task in progress, which is why most of this kit reports rather than
+reminds, and why exactly one part of it blocks.
 
 ## What each piece does
 
@@ -43,12 +61,6 @@ compact.
 
 ## The statusline
 
-```
-myproject  Opus 5 1M  15% ctx  alice max  30% wk  ~$50
-myproject  Opus 5 1M  55% ctx -> /handoff and /compact  alice max  30% wk  ~$50
-myproject  Opus 5 1M  85% ctx -> /handoff + /compact NOW  ...  70 shots  38 MB res
-```
-
 Every number comes from the JSON Claude Code already passes on stdin:
 `context_window.used_percentage`, `rate_limits.seven_day`, `cost.total_cost_usd`.
 Nothing is estimated. Screenshot and byte counters only appear once they are a
@@ -61,7 +73,8 @@ what the work would have cost on the API. On Max, Pro or a Team seat you are not
 billed per token, so the kit dims it and prefixes `~`. On a flat plan the number
 that can actually stop you is the quota, which is why `% wk` sits ahead of it.
 
-**The account label follows `/login`.** If you switch between a work and a
+**The account label** (`alice max`, `alice team`) appears when a credential is
+readable, and **follows `/login`.** If you switch between a work and a
 personal account, the statusline rereads the live credential on every redraw. If
 two credential files disagree and were touched within a minute of each other, it
 shows `account?` in amber rather than asserting one that might be wrong.
@@ -93,10 +106,29 @@ stops.
 The order it suggests is deliberate: `/handoff` first, `/compact` second.
 Compacting first destroys exactly the decisions and dead ends worth keeping.
 
+## The handoff skill
+
+Compacting is lossy. It keeps a summary and drops the rest, and what it drops
+first is usually the reasoning: why you rejected the other approach, which three
+things you already tried that did not work.
+
+`/handoff` writes that to a file before you compact, in four sections: state,
+decisions and **why**, next step, and traps. The traps section is the one that
+earns its keep, because a dead end is recorded nowhere else. The code only shows
+what worked.
+
+Hence the order the kit suggests, handoff first and compact second. Doing it the
+other way round destroys exactly what you were about to write down.
+
+This is also the one part of the kit that is not really an invention. Dumping
+state to markdown and starting fresh is the most widely agreed-on answer to this
+problem, showing up in Anthropic's own guidance on context engineering and in
+more or less every thread where people compare notes.
+
 ## Install
 
 ```bash
-git clone https://github.com/<you>/claude-context-kit
+git clone https://github.com/dsaltaren/claude-context-kit
 cd claude-context-kit
 ./install.sh
 ```
