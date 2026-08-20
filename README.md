@@ -122,8 +122,9 @@ other way round destroys exactly what you were about to write down.
 
 This is also the one part of the kit that is not really an invention. Dumping
 state to markdown and starting fresh is the most widely agreed-on answer to this
-problem, showing up in Anthropic's own guidance on context engineering and in
-more or less every thread where people compare notes.
+problem: Anthropic calls it [structured note-taking][ctx-eng], and it comes up
+independently in [threads where people compare notes][900k] and in
+[write-ups from people running agents unattended][fleet].
 
 ## Install
 
@@ -154,6 +155,47 @@ Claude Code 2.1.237.
   `general-purpose` are no longer free Haiku. Set
   `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` (or `haiku`) if you assumed otherwise.
 
+## Prior art and sources
+
+Nothing here was designed in a vacuum. What other people had already worked out:
+
+- **[Effective context engineering for AI agents][ctx-eng]** (Anthropic) makes
+  the case for structured note-taking and for subagent architectures where the
+  orchestrator only receives condensed summaries. The `handoff` skill is that
+  idea, nothing more.
+- **[Statusline reference][statusline-docs]** (Claude Code docs) lists the fields
+  passed on stdin. Worth reading before building anything: `used_percentage`,
+  `cost.total_cost_usd` and `rate_limits` all arrive pre-computed. I estimated
+  several of these by hand before noticing.
+- **[ccstatusline][ccstatusline]** is the established option in this space, far
+  more configurable than what is here. If you want a statusline rather than a
+  cost tripwire, start there.
+- **["When I have to compact a 2 day long 900k context session"][900k]**
+  (r/ClaudeAI) is where the cache-cost numbers get argued out in public, and
+  where the disagreement below comes from.
+- **["What I learned running 25+ agents in a loop, unattended"][fleet]**
+  (r/ClaudeCode) calls durable markdown memory "by far the single
+  highest-leverage thing I learned".
+- **["Subagents inherit your session model now"][subagents]** (r/ClaudeCode) is
+  the source of the last caveat above, and the one finding here that is a plain
+  fact rather than a preference.
+
+**An open disagreement, since this kit quietly takes a side.** One camp keeps
+long sessions alive deliberately, on the grounds that a cache read is far
+cheaper than rebuilding a cold context, and that letting the cache expire costs
+more than staying warm. The other starts fresh per task, on the grounds that
+quality degrades well before the window fills. Both positions have support and
+neither has produced a number that settles it. This kit assumes the second, which
+is a preference, not a proven result. If you hold the first, the thresholds are
+one edit away.
+
 ## License
 
 MIT
+
+[ctx-eng]: https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
+[statusline-docs]: https://code.claude.com/docs/en/statusline
+[ccstatusline]: https://github.com/sirmalloc/ccstatusline
+[900k]: https://old.reddit.com/r/ClaudeAI/comments/1v9bq96/
+[fleet]: https://old.reddit.com/r/ClaudeCode/comments/1vsyn8t/
+[subagents]: https://old.reddit.com/r/ClaudeCode/comments/1v7d0as/
