@@ -66,17 +66,21 @@ if isinstance(used, (int, float)):
     grande = bool(dig("context_window", "exceeds_200k_tokens", default=False)) or tok > 200000
 
     col = RED if used >= 75 else YELL if (used >= 50 or grande) else GREEN
-    txt = "%d%% ctx" % used
-    if tok >= 100000:
-        txt += " (%dK)" % (tok // 1000)
+    # Con los tokens absolutos delante, el % es el dato secundario: se muestra
+    # Los tokens absolutos van junto al %: el porcentaje contra una ventana
+    # una ventana estandar entera.
+    if tok >= 10000:
+        txt = "%d%% ctx (%dK)" % (used, tok // 1000)
+    else:
+        txt = "%d%% ctx" % used
     # Mismo consejo que el hook Stop, para que las dos senales no se contradigan:
     # handoff primero, compact despues. Compactar antes borra lo que ibas a volcar.
+    # El consejo va entero: cabe en una ventana de ancho normal, y el hook
+    # Stop repite la version larga por escrito de todas formas.
     if used >= 75:
         txt += " -> /handoff + /compact NOW"
-    elif used >= 50:
+    elif used >= 50 or grande:
         txt += " -> /handoff and /compact"
-    elif grande:
-        txt += " -> over 200K, time to /handoff and /compact"
     parts.append(col + txt + RESET)
 
 # Quien paga esto. Se lee del .claude.json de la config activa (CLAUDE_CONFIG_DIR
