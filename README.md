@@ -118,10 +118,16 @@ Compacting is lossy. It keeps a summary and drops the rest, and what it drops
 first is usually the reasoning: why you rejected the other approach, which three
 things you already tried that did not work.
 
-`/handoff` writes that to a file before you compact, in four sections: state,
-decisions and **why**, next step, and traps. The traps section is the one that
-earns its keep, because a dead end is recorded nowhere else. The code only shows
-what worked.
+`/handoff` writes that to a file before you compact: the next step first,
+executable as written, then state, decisions and **why**, and traps. The traps
+section is the one that earns its keep, because a dead end is recorded nowhere
+else. The code only shows what worked.
+
+Version 2 added the lessons from using it in anger: full rewrite instead of
+appending (a handoff that accumulates sessions becomes a changelog nobody can
+resume from), a ~40-line cap, a routing table so durable rules and traps land in
+docs or memory instead of piling up here, and a pointer left where your sessions
+always look first, so the file actually gets read on resume.
 
 Hence the order the kit suggests, handoff first and compact second. Doing it the
 other way round destroys exactly what you were about to write down.
